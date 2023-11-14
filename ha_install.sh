@@ -20,7 +20,7 @@ if [ "${HOMEASSISTANT_VERSION}" == "" ]; then
 fi
 
 echo "=========================================="
-echo " Installing Home Assistant ${HOMEASSISTANT_VERSION} ..."
+echo " Installing Home Fixed Assistant ${HOMEASSISTANT_VERSION} ..."
 echo "=========================================="
 
 get_python_version()
