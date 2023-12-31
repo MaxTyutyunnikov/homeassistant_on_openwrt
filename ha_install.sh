@@ -31,7 +31,7 @@ get_python_version()
 get_version()
 {
   local pkg=$1
-  cat /tmp/ha_requirements.txt | grep -i -m 1 "${pkg}[>=]=" | sed 's/.*==\(.*\)/\1/g'
+  cat /TEMP/ha_requirements.txt | grep -i -m 1 "${pkg}[>=]=" | sed 's/.*==\(.*\)/\1/g'
 }
 
 version()
@@ -47,11 +47,11 @@ is_lumi_gateway()
 
 function int_version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
 
-wget -q https://raw.githubusercontent.com/home-assistant/core/${HOMEASSISTANT_VERSION}/homeassistant/package_constraints.txt -O - > /tmp/ha_requirements.txt
-wget -q https://raw.githubusercontent.com/home-assistant/core/${HOMEASSISTANT_VERSION}/requirements.txt -O - >> /tmp/ha_requirements.txt
-wget -q https://raw.githubusercontent.com/home-assistant/core/${HOMEASSISTANT_VERSION}/requirements_all.txt -O - >> /tmp/ha_requirements.txt
+wget -q https://raw.githubusercontent.com/home-assistant/core/${HOMEASSISTANT_VERSION}/homeassistant/package_constraints.txt -O - > /TEMP/ha_requirements.txt
+wget -q https://raw.githubusercontent.com/home-assistant/core/${HOMEASSISTANT_VERSION}/requirements.txt -O - >> /TEMP/ha_requirements.txt
+wget -q https://raw.githubusercontent.com/home-assistant/core/${HOMEASSISTANT_VERSION}/requirements_all.txt -O - >> /TEMP/ha_requirements.txt
 # now we can fetch nabucasa version and its deps
-wget -q https://raw.githubusercontent.com/NabuCasa/hass-nabucasa/$(get_version hass-nabucasa)/setup.py -O - | grep '[>=]=' | sed -E 's/\s*"(.*)",?/\1/' >> /tmp/ha_requirements.txt
+wget -q https://raw.githubusercontent.com/NabuCasa/hass-nabucasa/$(get_version hass-nabucasa)/setup.py -O - | grep '[>=]=' | sed -E 's/\s*"(.*)",?/\1/' >> /TEMP/ha_requirements.txt
 
 PYCOGNITO_VER=$(get_version pycognito)
 HOMEASSISTANT_FRONTEND_VERSION=$(get_version home-assistant-frontend)
@@ -148,7 +148,7 @@ opkg install python3-pycares 2>/dev/null || true
 # numpy requires hard floating point support and is missing on some MIPS architectures
 opkg install python3-numpy 2>/dev/null || true
 
-cd /tmp/
+cd /TEMP/
 
 # add missing _distutils_hack from setuptools
 mkdir -p /usr/lib/python${PYTHON_VERSION}/site-packages/_distutils_hack
@@ -161,21 +161,21 @@ rm -rf /usr/lib/python${PYTHON_VERSION}/site-packages/botocore/data
 
 echo "Install base requirements from PyPI..."
 pip3 install --no-cache-dir wheel
-pip3 freeze > /tmp/freeze.txt
-grep -E 'aiohttp|async-timeout|crypto|YAML' /tmp/freeze.txt > /tmp/owrt_constraints.txt
+pip3 freeze > /TEMP/freeze.txt
+grep -E 'aiohttp|async-timeout|crypto|YAML' /TEMP/freeze.txt > /TEMP/owrt_constraints.txt
 
-cat << EOF > /tmp/requirements_nodeps.txt
+cat << EOF > /TEMP/requirements_nodeps.txt
 $(version aioesphomeapi)
 $(version zeroconf)
 EOF
-pip3 install --no-cache-dir --no-deps -r /tmp/requirements_nodeps.txt
+pip3 install --no-cache-dir --no-deps -r /TEMP/requirements_nodeps.txt
 # add zeroconf
-grep 'zeroconf' /tmp/freeze.txt >> /tmp/owrt_constraints.txt
+grep 'zeroconf' /TEMP/freeze.txt >> /TEMP/owrt_constraints.txt
 
 sed -i 's/async-timeout (>=.*)/async-timeout (>=3.0.0)/' /usr/lib/python${PYTHON_VERSION}/site-packages/zeroconf-*.dist-info/METADATA
 sed -i 's/async-timeout (>=.*)/async-timeout (>=3.0.0)/' /usr/lib/python${PYTHON_VERSION}/site-packages/aioesphomeapi-*.dist-info/METADATA
 
-cat << EOF > /tmp/requirements.txt
+cat << EOF > /TEMP/requirements.txt
 tzdata==2021.2.post0  # 2021.6+ requirement
 
 $(version atomicwrites-homeassistant)  # nabucasa dep
@@ -211,7 +211,7 @@ hass-configurator==0.4.1
 EOF
 
 if [ $LUMI_GATEWAY ]; then
-  cat << EOF >> /tmp/requirements.txt
+  cat << EOF >> /TEMP/requirements.txt
 # zha requirements
 $(version pyserial)
 $(version zha-quirks)
@@ -220,7 +220,7 @@ $(version zigpy-zigate)
 EOF
 fi
 
-pip3 install --no-cache-dir -c /tmp/owrt_constraints.txt -r /tmp/requirements.txt
+pip3 install --no-cache-dir -c /TEMP/owrt_constraints.txt -r /TEMP/requirements.txt
 
 # patch async_upnp_client to support older aiohttp
 sed -i 's/CIMultiDictProxy\[str\]/CIMultiDictProxy/' /usr/lib/python${PYTHON_VERSION}/site-packages/async_upnp_client/ssdp.py
@@ -244,7 +244,7 @@ echo "Installing pycognito..."
 tar -zxf pycognito-${PYCOGNITO_VER}.tar.gz
 cd pycognito-${PYCOGNITO_VER}
 sed -i 's/boto3>=[0-9\.]*/boto3/' setup.py
-pip3 install . --no-cache-dir -c /tmp/owrt_constraints.txt
+pip3 install . --no-cache-dir -c /TEMP/owrt_constraints.txt
 cd ..
 rm -rf pycognito-${PYCOGNITO_VER} pycognito-${PYCOGNITO_VER}.tar.gz
 
@@ -261,10 +261,10 @@ if [ -f pyproject.toml ]; then
 fi
 
 find . -type f -exec touch {} +
-pip3 install . --no-cache-dir -c /tmp/owrt_constraints.txt
+pip3 install . --no-cache-dir -c /TEMP/owrt_constraints.txt
 cd ..
 rm -rf python-miio-${PYTHON_MIIO_VER} python-miio-${PYTHON_MIIO_VER}.tar.gz
-pip3 install --no-cache-dir -c /tmp/owrt_constraints.txt $(version PyXiaomiGateway)
+pip3 install --no-cache-dir -c /TEMP/owrt_constraints.txt $(version PyXiaomiGateway)
 
 echo "Installing aiodiscover..."
 tar -zxf aiodiscover-${AIODISCOVER_VER}.tar.gz
@@ -272,7 +272,7 @@ cd aiodiscover-${AIODISCOVER_VER}
 sed -i 's/netifaces[0-9.><=]*/netifaces/' setup.py
 sed -i 's/async_timeout[0-9.><=]*/async_timeout/' setup.py
 find . -type f -exec touch {} +
-pip3 install . --no-cache-dir -c /tmp/owrt_constraints.txt
+pip3 install . --no-cache-dir -c /TEMP/owrt_constraints.txt
 cd ..
 rm -rf aiodiscover-${AIODISCOVER_VER} aiodiscover-${AIODISCOVER_VER}.tar.gz
 
@@ -283,7 +283,7 @@ cd hass-nabucasa-${NABUCASA_VER}
 sed -i 's/==.*"/"/' setup.py
 sed -i 's/>=.*"/"/' setup.py
 rm -rf /usr/lib/python${PYTHON_VERSION}/site-packages/hass_nabucasa-*.egg
-pip3 install . --no-cache-dir -c /tmp/owrt_constraints.txt
+pip3 install . --no-cache-dir -c /TEMP/owrt_constraints.txt
 cd ..
 rm -rf hass-nabucasa-${NABUCASA_VER}.tar.gz hass-nabucasa-${NABUCASA_VER}
 
@@ -292,9 +292,9 @@ cd /root
 rm -rf home-assistant-frontend.zip home-assistant-frontend-${HOMEASSISTANT_FRONTEND_VERSION}
 rm -rf /usr/lib/python${PYTHON_VERSION}/site-packages/hass_frontend
 rm -rf /usr/lib/python${PYTHON_VERSION}/site-packages/home_assistant_frontend-*
-wget https://pypi.org/simple/home-assistant-frontend/ -O - | grep home_assistant_frontend-${HOMEASSISTANT_FRONTEND_VERSION}-py3 | cut -d '"' -f2 | xargs wget -O /tmp/home-assistant-frontend.zip
-unzip -qqo /tmp/home-assistant-frontend.zip -d home-assistant-frontend
-rm -rf /tmp/home-assistant-frontend.zip
+wget https://pypi.org/simple/home-assistant-frontend/ -O - | grep home_assistant_frontend-${HOMEASSISTANT_FRONTEND_VERSION}-py3 | cut -d '"' -f2 | xargs wget -O /TEMP/home-assistant-frontend.zip
+unzip -qqo /TEMP/home-assistant-frontend.zip -d home-assistant-frontend
+rm -rf /TEMP/home-assistant-frontend.zip
 cd home-assistant-frontend
 find ./hass_frontend/frontend_es5 -name '*.js' -exec rm -rf {} \;
 find ./hass_frontend/frontend_es5 -name '*.map' -exec rm -rf {} \;
@@ -322,11 +322,11 @@ rm -rf home-assistant-frontend
 echo "Install HASS"
 pip3 install --no-cache-dir --upgrade typing-extensions || true
 
-cd /tmp
+cd /TEMP
 rm -rf homeassistant.tar.gz homeassistant-${HOMEASSISTANT_VERSION} .cache pip-*
 wget https://pypi.python.org/packages/source/h/homeassistant/homeassistant-${HOMEASSISTANT_VERSION}.tar.gz -O homeassistant.tar.gz
 
-cat << EOF > /tmp/ha_components.txt
+cat << EOF > /TEMP/ha_components.txt
 __init__.py
 air_quality
 alarm_control_panel
@@ -451,19 +451,19 @@ zeroconf
 zone
 EOF
 if [ $LUMI_GATEWAY ]; then
-  echo "zha" >> /tmp/ha_components.txt
+  echo "zha" >> /TEMP/ha_components.txt
 fi
 
-# create fake structure tu get full list of components in /tmp/t/
-rm -rf /tmp/t
+# create fake structure tu get full list of components in /TEMP/t/
+rm -rf /TEMP/t
 tar -ztf homeassistant.tar.gz | grep '/homeassistant/components/' | sed 's/^/t\//' | xargs mkdir -p
 rx=$(cat ha_components.txt | sed -e 's/^/^/' -e 's/$/$/' | head -c -1 | tr '\n' '|')
-ls -1 t/homeassistant-*/homeassistant/components/ | grep -v -E $rx | sed 's/^/*\/homeassistant\/components\//' > /tmp/ha_exclude.txt
-rm -rf /tmp/t /tmp/ha_components.txt
+ls -1 t/homeassistant-*/homeassistant/components/ | grep -v -E $rx | sed 's/^/*\/homeassistant\/components\//' > /TEMP/ha_exclude.txt
+rm -rf /TEMP/t /TEMP/ha_components.txt
 
 # extract without components to reduce space
-tar -zxf homeassistant.tar.gz -X /tmp/ha_exclude.txt
-rm -rf /tmp/ha_exclude.txt
+tar -zxf homeassistant.tar.gz -X /TEMP/ha_exclude.txt
+rm -rf /TEMP/ha_exclude.txt
 
 rm -rf homeassistant.tar.gz
 cd homeassistant-${HOMEASSISTANT_VERSION}/homeassistant/
@@ -589,7 +589,7 @@ if [ ! -f setup.py ]; then
 else
   sed -i 's/install_requires=REQUIRES/install_requires=[]/' setup.py
 fi
-pip3 install . --no-cache-dir -c /tmp/owrt_constraints.txt
+pip3 install . --no-cache-dir -c /TEMP/owrt_constraints.txt
 cd ../
 rm -rf homeassistant-${HOMEASSISTANT_VERSION}/
 
@@ -609,7 +609,7 @@ tts:
 
 recorder:
   purge_keep_days: 1
-  db_url: 'sqlite:////tmp/homeassistant.db'
+  db_url: 'sqlite:////TEMP/homeassistant.db'
   include:
     entity_globs:
       - sensor.illuminance_*
